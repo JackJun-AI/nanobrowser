@@ -62,16 +62,41 @@ export async function compareHistoryElementAndDomElement(
   domHistoryElement: DOMHistoryElement,
   domElement: DOMElementNode,
 ): Promise<boolean> {
+  console.log('调试 compareHistoryElementAndDomElement:');
+  console.log(
+    '历史元素:',
+    JSON.stringify({
+      tagName: domHistoryElement.tagName,
+      xpath: domHistoryElement.xpath,
+      highlightIndex: domHistoryElement.highlightIndex,
+      parentBranchPath: domHistoryElement.entireParentBranchPath,
+    }),
+  );
+  console.log(
+    'DOM元素:',
+    JSON.stringify({
+      tagName: domElement.tagName,
+      xpath: domElement.xpath,
+      highlightIndex: domElement.highlightIndex,
+    }),
+  );
+
   const [hashedDomHistoryElement, hashedDomElement] = await Promise.all([
     hashDomHistoryElement(domHistoryElement),
     hashDomElement(domElement),
   ]);
 
-  return (
+  console.log('历史元素哈希:', JSON.stringify(hashedDomHistoryElement));
+  console.log('DOM元素哈希:', JSON.stringify(hashedDomElement));
+
+  const isEqual =
     hashedDomHistoryElement.branchPathHash === hashedDomElement.branchPathHash &&
     hashedDomHistoryElement.attributesHash === hashedDomElement.attributesHash &&
-    hashedDomHistoryElement.xpathHash === hashedDomElement.xpathHash
-  );
+    hashedDomHistoryElement.xpathHash === hashedDomElement.xpathHash;
+
+  console.log('比较结果:', isEqual);
+
+  return isEqual;
 }
 
 /**

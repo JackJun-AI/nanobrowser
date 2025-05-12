@@ -7,7 +7,7 @@
     "clean:node_modules": "pnpx rimraf node_modules",
     "clean:turbo": "rimraf .turbo",
     "clean": "pnpm clean:turbo && pnpm clean:node_modules",
-    "build": "vite build",
+    "build": "./build-scripts.sh",
     "dev": "cross-env __DEV__=true vite build --mode development",
     "test": "vitest run",
     "lint": "eslint ./ --ext .ts,.js,.tsx,.jsx",

@@ -7,9 +7,14 @@ import { isDev, isProduction, watchOption } from '@extension/vite-config';
 
 const rootDir = resolve(__dirname);
 const srcDir = resolve(rootDir, 'src');
-
 const outDir = resolve(rootDir, '..', 'dist');
-export default defineConfig({
+
+// Determine which entry point to build based on the BUILD_ENTRY env var
+// Default to background if not specified
+const buildEntry = process.env.BUILD_ENTRY || 'background';
+
+// Config for the background script
+const backgroundConfig = defineConfig({
   resolve: {
     alias: {
       '@root': rootDir,
@@ -18,15 +23,6 @@ export default defineConfig({
     },
     conditions: ['browser', 'module', 'import', 'default'],
     mainFields: ['browser', 'module', 'main']
-  },
-  server: {
-    // Restrict CORS to only allow localhost
-    cors: {
-      origin: ['http://localhost:5173', 'http://localhost:3000'],
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      credentials: true
-    },
-    host: 'localhost',
   },
   plugins: [
     libAssetsPlugin({
@@ -51,12 +47,47 @@ export default defineConfig({
     reportCompressedSize: isProduction,
     watch: watchOption,
     rollupOptions: {
-      external: [
-        'chrome',
-        // 'chromium-bidi/lib/cjs/bidiMapper/BidiMapper.js'
-      ],
+      external: ['chrome'],
     },
   },
-
   envDir: '../',
 });
+
+// Config for the content script
+const contentConfig = defineConfig({
+  resolve: {
+    alias: {
+      '@root': rootDir,
+      '@src': srcDir,
+      '@assets': resolve(srcDir, 'assets'),
+    },
+    conditions: ['browser', 'module', 'import', 'default'],
+    mainFields: ['browser', 'module', 'main']
+  },
+  plugins: [
+    libAssetsPlugin({
+      outputPath: outDir,
+    }) as PluginOption,
+  ],
+  build: {
+    lib: {
+      formats: ['iife'],
+      entry: resolve(__dirname, 'src/content/index.ts'),
+      name: 'ContentScript',
+      fileName: 'content/index',
+    },
+    outDir,
+    emptyOutDir: false,
+    sourcemap: isDev,
+    minify: isProduction,
+    reportCompressedSize: isProduction,
+    watch: watchOption,
+    rollupOptions: {
+      external: ['chrome'],
+    },
+  },
+  envDir: '../',
+});
+
+// Export the appropriate config based on the BUILD_ENTRY env var
+export default buildEntry === 'content' ? contentConfig : backgroundConfig;

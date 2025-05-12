@@ -4,11 +4,13 @@ import { RxDiscordLogo } from 'react-icons/rx';
 import { FiSettings } from 'react-icons/fi';
 import { PiPlusBold } from 'react-icons/pi';
 import { GrHistory } from 'react-icons/gr';
+import { RiFlowChart } from 'react-icons/ri';
 import { type Message, Actors, chatHistoryStore } from '@extension/storage';
 import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
 import ChatHistoryList from './components/ChatHistoryList';
 import TemplateList from './components/TemplateList';
+import WorkflowExport from './components/WorkflowExport';
 import { EventType, type AgentEvent, ExecutionState } from './types/event';
 import { defaultTemplates } from './templates';
 import './SidePanel.css';
@@ -19,6 +21,7 @@ const SidePanel = () => {
   const [showStopButton, setShowStopButton] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showWorkflow, setShowWorkflow] = useState(false);
   const [chatSessions, setChatSessions] = useState<Array<{ id: string; title: string; createdAt: number }>>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [isHistoricalSession, setIsHistoricalSession] = useState(false);
@@ -486,6 +489,7 @@ const SidePanel = () => {
 
   const handleBackToChat = () => {
     setShowHistory(false);
+    setShowWorkflow(false);
   };
 
   const handleSessionSelect = async (sessionId: string) => {
@@ -523,6 +527,11 @@ const SidePanel = () => {
     }
   };
 
+  const handleWorkflowClick = () => {
+    setShowWorkflow(true);
+    setShowHistory(false);
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -540,77 +549,86 @@ const SidePanel = () => {
     <div>
       <div
         className={`flex h-screen flex-col ${isDarkMode ? 'bg-slate-900' : "bg-[url('/bg.jpg')] bg-cover bg-no-repeat"} overflow-hidden border ${isDarkMode ? 'border-sky-800' : 'border-[rgb(186,230,253)]'} rounded-2xl`}>
-        <header className="header relative">
-          <div className="header-logo">
-            {showHistory ? (
-              <button
-                type="button"
-                onClick={handleBackToChat}
-                className={`${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-400 hover:text-sky-500'} cursor-pointer`}
-                aria-label="Back to chat">
-                ← Back
-              </button>
-            ) : (
-              <img src="/icon-128.png" alt="Extension Logo" className="size-6" />
-            )}
-          </div>
-          <div className="header-icons">
-            {!showHistory && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleNewChat}
-                  onKeyDown={e => e.key === 'Enter' && handleNewChat()}
-                  className={`header-icon ${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-400 hover:text-sky-500'} cursor-pointer`}
-                  aria-label="New Chat"
-                  tabIndex={0}>
-                  <PiPlusBold size={20} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLoadHistory}
-                  onKeyDown={e => e.key === 'Enter' && handleLoadHistory()}
-                  className={`header-icon ${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-400 hover:text-sky-500'} cursor-pointer`}
-                  aria-label="Load History"
-                  tabIndex={0}>
-                  <GrHistory size={20} />
-                </button>
-              </>
-            )}
-            <a
-              href="https://discord.gg/NN3ABHggMK"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`header-icon ${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-400 hover:text-sky-500'}`}>
-              <RxDiscordLogo size={20} />
-            </a>
-            <button
-              type="button"
-              onClick={() => chrome.runtime.openOptionsPage()}
-              onKeyDown={e => e.key === 'Enter' && chrome.runtime.openOptionsPage()}
-              className={`header-icon ${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-400 hover:text-sky-500'} cursor-pointer`}
-              aria-label="Settings"
-              tabIndex={0}>
-              <FiSettings size={20} />
-            </button>
-          </div>
-        </header>
         {showHistory ? (
-          <div className="flex-1 overflow-hidden">
-            <ChatHistoryList
-              sessions={chatSessions}
-              onSessionSelect={handleSessionSelect}
-              onSessionDelete={handleSessionDelete}
-              visible={true}
-              isDarkMode={isDarkMode}
-            />
-          </div>
+          <ChatHistoryList
+            sessions={chatSessions}
+            onSelect={handleSessionSelect}
+            onDelete={handleSessionDelete}
+            onBack={handleBackToChat}
+          />
+        ) : showWorkflow ? (
+          <WorkflowExport onClose={handleBackToChat} />
         ) : (
           <>
-            {messages.length === 0 && (
-              <>
+            <div className="flex justify-between items-center p-3 border-b border-sky-100">
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleLoadHistory}
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700"
+                  aria-label="History">
+                  <GrHistory size={16} />
+                </button>
+
+                <button
+                  onClick={handleWorkflowClick}
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700"
+                  aria-label="Workflow">
+                  <RiFlowChart size={16} />
+                </button>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleNewChat}
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700"
+                  aria-label="New Chat">
+                  <PiPlusBold size={16} />
+                </button>
+
+                <a
+                  href={chrome.runtime.getURL('options/index.html')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700"
+                  aria-label="Settings">
+                  <FiSettings size={16} />
+                </a>
+              </div>
+            </div>
+
+            <div className="flex-grow overflow-y-auto px-3 py-2" style={{ scrollbarWidth: 'thin' }}>
+              {messages.length === 0 && (
+                <>
+                  <div
+                    className={`border-t ${isDarkMode ? 'border-sky-900' : 'border-sky-100'} mb-2 p-2 shadow-sm backdrop-blur-sm`}>
+                    <ChatInput
+                      onSendMessage={handleSendMessage}
+                      onStopTask={handleStopTask}
+                      disabled={!inputEnabled || isHistoricalSession}
+                      showStopButton={showStopButton}
+                      setContent={setter => {
+                        setInputTextRef.current = setter;
+                      }}
+                      isDarkMode={isDarkMode}
+                    />
+                  </div>
+                  <div>
+                    <TemplateList
+                      templates={defaultTemplates}
+                      onTemplateSelect={handleTemplateSelect}
+                      isDarkMode={isDarkMode}
+                    />
+                  </div>
+                </>
+              )}
+              <div
+                className={`scrollbar-gutter-stable flex-1 overflow-x-hidden overflow-y-scroll scroll-smooth p-2 ${isDarkMode ? 'bg-slate-900/80' : ''}`}>
+                <MessageList messages={messages} isDarkMode={isDarkMode} />
+                <div ref={messagesEndRef} />
+              </div>
+              {messages.length > 0 && (
                 <div
-                  className={`border-t ${isDarkMode ? 'border-sky-900' : 'border-sky-100'} mb-2 p-2 shadow-sm backdrop-blur-sm`}>
+                  className={`border-t ${isDarkMode ? 'border-sky-900' : 'border-sky-100'} p-2 shadow-sm backdrop-blur-sm`}>
                   <ChatInput
                     onSendMessage={handleSendMessage}
                     onStopTask={handleStopTask}
@@ -622,35 +640,8 @@ const SidePanel = () => {
                     isDarkMode={isDarkMode}
                   />
                 </div>
-                <div>
-                  <TemplateList
-                    templates={defaultTemplates}
-                    onTemplateSelect={handleTemplateSelect}
-                    isDarkMode={isDarkMode}
-                  />
-                </div>
-              </>
-            )}
-            <div
-              className={`scrollbar-gutter-stable flex-1 overflow-x-hidden overflow-y-scroll scroll-smooth p-2 ${isDarkMode ? 'bg-slate-900/80' : ''}`}>
-              <MessageList messages={messages} isDarkMode={isDarkMode} />
-              <div ref={messagesEndRef} />
+              )}
             </div>
-            {messages.length > 0 && (
-              <div
-                className={`border-t ${isDarkMode ? 'border-sky-900' : 'border-sky-100'} p-2 shadow-sm backdrop-blur-sm`}>
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  onStopTask={handleStopTask}
-                  disabled={!inputEnabled || isHistoricalSession}
-                  showStopButton={showStopButton}
-                  setContent={setter => {
-                    setInputTextRef.current = setter;
-                  }}
-                  isDarkMode={isDarkMode}
-                />
-              </div>
-            )}
           </>
         )}
       </div>

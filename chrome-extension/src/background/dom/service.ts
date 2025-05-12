@@ -304,3 +304,103 @@ export async function getScrollInfo(tabId: number): Promise<[number, number]> {
   }
   return [result.pixels_above, result.pixels_below];
 }
+
+/**
+ * Capture DOM snapshot for a specific element.
+ * @param tabId - The ID of the tab to capture the DOM snapshot from.
+ * @param elementInfo - Optional information about the clicked element (selector, coordinates).
+ * @returns Object containing the element's semantic information.
+ */
+export async function captureDOMSnapshot(
+  tabId: number,
+  elementInfo?: { selector?: string; x?: number; y?: number },
+): Promise<{
+  outerHTML: string;
+  innerText: string;
+  semanticInfo: {
+    tagName: string;
+    id: string;
+    className: string;
+    ariaLabel: string;
+    placeholder: string;
+    alt: string;
+    labelText: string;
+  };
+  nearbyText: string;
+  url: string;
+}> {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: info => {
+      let targetElement: Element | null = null;
+
+      // Find the target element
+      if (info?.selector) {
+        targetElement = document.querySelector(info.selector);
+      } else if (info?.x !== undefined && info?.y !== undefined) {
+        targetElement = document.elementFromPoint(info.x, info.y);
+      }
+
+      // Fallback to document.body if no element is found
+      if (!targetElement) {
+        targetElement = document.body;
+      }
+
+      // Get associated label text for the element
+      let labelText = '';
+      if (targetElement.id) {
+        const associatedLabel = document.querySelector(`label[for="${targetElement.id}"]`);
+        if (associatedLabel) {
+          labelText = associatedLabel.textContent || '';
+        }
+      }
+
+      // Extract nearby text (parent and siblings text nodes)
+      let nearbyText = '';
+      if (targetElement.parentElement) {
+        const parent = targetElement.parentElement;
+
+        // Get text nodes directly in the parent
+        for (const node of Array.from(parent.childNodes)) {
+          if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+            nearbyText += node.textContent.trim() + ' ';
+          }
+        }
+
+        // Get text from siblings (heading elements have higher priority)
+        const siblings = Array.from(parent.children);
+        for (const sibling of siblings) {
+          if (sibling === targetElement) continue;
+
+          if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(sibling.tagName)) {
+            nearbyText += sibling.textContent?.trim() + ' ';
+          }
+        }
+      }
+
+      return {
+        outerHTML: targetElement.outerHTML || '',
+        innerText: targetElement.textContent?.trim() || '',
+        semanticInfo: {
+          tagName: targetElement.tagName.toLowerCase(),
+          id: targetElement.id || '',
+          className: targetElement.className || '',
+          ariaLabel: targetElement.getAttribute('aria-label') || '',
+          placeholder: targetElement.getAttribute('placeholder') || '',
+          alt: targetElement.getAttribute('alt') || '',
+          labelText: labelText,
+        },
+        nearbyText: nearbyText.trim(),
+        url: window.location.href,
+      };
+    },
+    args: [elementInfo],
+  });
+
+  const result = results[0]?.result;
+  if (!result) {
+    throw new Error('Failed to capture DOM snapshot');
+  }
+
+  return result;
+}

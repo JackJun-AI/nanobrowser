@@ -44,7 +44,6 @@ const manifest = withSidePanel({
   options_page: 'options/index.html',
   background: {
     service_worker: 'background.iife.js',
-    type: 'module',
   },
   action: {
     default_icon: 'icon-32.png',
